@@ -10,13 +10,15 @@
     (modulesPath + "/profiles/qemu-guest.nix")
     ./disk-config.nix
   ];
-  boot.loader.grub = {
-    # no need to set devices, disko will add all devices that have a EF02 partition to the list already
-    # devices = [ ];
-    efiSupport = true;
-    efiInstallAsRemovable = true;
+  boot = { 
+   loader.systemd-boot.enable = true;
+   supportedFilesystems = [ "zfs" ];
+   initrd.postDeviceCommands = lib.mkAfter ''
+    zfs rollback -r rpool/local/root@blank
+  '';
   };
   services.openssh.enable = true;
+  networking.hostId = "4145f0bc";
 
   environment.systemPackages = map lib.lowPrio [
     pkgs.curl
@@ -25,7 +27,7 @@
 
   users.users.root.openssh.authorizedKeys.keys = [
     # change this to your ssh key
-    "CHANGE"
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGjO8XQy9w6Yas1DaTq+4vhWiFeyz6uZcngaHkIeUwf8 NixOS WSL"
   ];
 
   system.stateVersion = "24.05";

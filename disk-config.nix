@@ -1,53 +1,67 @@
-# Example to create a bios compatible gpt partition
-{ lib, ... }:
+{ lib, ... } :
 {
   disko.devices = {
-    disk.disk1 = {
-      device = lib.mkDefault "/dev/sda";
-      type = "disk";
-      content = {
-        type = "gpt";
-        partitions = {
-          boot = {
-            name = "boot";
-            size = "1M";
-            type = "EF02";
-          };
-          esp = {
-            name = "ESP";
-            size = "500M";
-            type = "EF00";
-            content = {
-              type = "filesystem";
-              format = "vfat";
-              mountpoint = "/boot";
+    disk = {
+      main = {
+        type = "disk";
+        device = "/dev/sda";
+        content = {
+          type = "gpt";
+          partitions = {
+            boot = {
+                name = "boot";
+                size = "1M";
+                type = "EF02";
             };
-          };
-          root = {
-            name = "root";
-            size = "100%";
-            content = {
-              type = "lvm_pv";
-              vg = "pool";
+            efi = {
+              size = "512M";
+              type = "EF00";
+              name = "efi";
+              content = {
+                type = "filesystem";
+                format = "vfat";
+                mountpoint = "/boot";
+              };
+            };
+            root = {
+              size = "100%";
+              content = {
+                type = "zfs";
+                pool = "zfspool";
+              };
             };
           };
         };
       };
     };
-    lvm_vg = {
-      pool = {
-        type = "lvm_vg";
-        lvs = {
+    zpool = {
+      zfspool = {
+        type = "zpool";
+        rootFsOptions = {
+          canmount = "off";
+        };
+        datasets = {
           root = {
-            size = "100%FREE";
-            content = {
-              type = "filesystem";
-              format = "ext4";
-              mountpoint = "/";
-              mountOptions = [
-                "defaults"
-              ];
-            };
+            type = "zfs_fs";
+            mountpoint = "/";
+            options.mountpoint = "legacy";
+            postCreateHook = "zfs snapshot zfspool/root@blank";
+          };
+          nix = {
+            type = "zfs_fs";
+            mountpoint = "/nix";
+            options.mountpoint = "legacy";
+          };
+          persist = {
+            type = "zfs_fs";
+            options.mountpoint = "legacy";
+            mountpoint = "/persist";
+          };
+          home = {
+            type = "zfs_fs";
+            options.mountpoint = "legacy";
+            mountpoint = "/home";
+            postCreateHook = "zfs snapshot zfspool/home@blank";
           };
         };
       };
